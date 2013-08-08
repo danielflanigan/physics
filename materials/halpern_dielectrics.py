@@ -4,7 +4,9 @@ import numpy as np
 from scipy.constants import c
 
 """
-M. Halpern, et al. 'Far infrared transmission of dielectrics at cryogenic and room temperatures: glass, Fluorogold, Eccosorb, Stycast, and various plastics.' Applied Optics, 1986.
+M. Halpern, et al. 'Far infrared transmission of dielectrics at
+cryogenic and room temperatures: glass, Fluorogold, Eccosorb, Stycast,
+and various plastics.' Applied Optics, 1986.
 """
 
 # This paper uses inverse centimeters (ICM) internally.
