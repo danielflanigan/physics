@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 from scipy.constants import epsilon_0, hbar, k as k_B, pi
 from scipy.special import ellipk
+import lmfit
 
 def interdigitated_capacitance(epsilon_r, area, width, gap):
     """
@@ -15,3 +16,11 @@ def interdigitated_capacitance(epsilon_r, area, width, gap):
     Kp = ellipk(1 - k**2)
     C = epsilon_0 * (1 + epsilon_r) * (area / pitch) * (K / Kp)
     return C
+
+# TODO: finish this.
+def find_interdigital_capacitance(capacitance, params):
+    def parameterized_interdigitated_capacitance(params):
+        base = params['base'].value
+        height = params['height'].value
+
+    return lmfit.minimize(lambda params: capacitance - int)
