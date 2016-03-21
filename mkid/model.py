@@ -52,6 +52,9 @@ class KID(object):
     def chi_a(self, iQi, x=0):
         return 1 / 2 * self.chi_c(iQi=iQi) * self.chi_g(iQi=iQi, x=x)
 
+    def optical_generation_rate(self, P, nu):
+        return self.active_metal.quasiparticles_per_photon(nu) * P / (h * nu)
+
     @property
     def thermal_generation_rate(self):
         return self.active_volume_um3 * self.active_metal.thermal_generation_per_um3(T=self.substrate.T)
