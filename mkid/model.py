@@ -10,7 +10,7 @@ BCS = 1.764
 class KID(object):
 
     def __init__(self, active_metal, active_volume_um3, inactive_metal, inactive_volume_um3, substrate,
-                 phonon_trapping_factor, alpha, f_r, iQc, iQi0, S_TLS_1_Hz_P_c, P_c):
+                 phonon_trapping_factor, alpha, f_r, iQc, iQi0, S_TLS_at_P_c, P_c):
         self.substrate = substrate
         self.active_metal = active_metal
         self.active_volume_um3 = active_volume_um3
@@ -21,7 +21,7 @@ class KID(object):
         self.f_r = f_r
         self.iQc = iQc
         self.iQi0 = iQi0
-        self.S_TLS_1_Hz_P_c = S_TLS_1_Hz_P_c
+        self.S_TLS_at_P_c = S_TLS_at_P_c
         self.P_c = P_c
 
     def iQqp(self, Gamma, T_qp=None):
@@ -109,10 +109,10 @@ class KID(object):
 
     def NEP2_TLS(self, P_g, Gamma, nu):
         P_i = self.chi_a(iQi=self.iQi0 + self.iQqp(Gamma=Gamma)) * P_g
-        return ((self.S_TLS_1_Hz_P_c * (self.P_c / P_i)**(1/2)) /
+        return ((self.S_TLS_at_P_c * (self.P_c / P_i) ** (1 / 2)) /
                 (self.d_x_d_N_qp() *
                  self.d_N_qp_d_Gamma_A(Gamma=Gamma) *
-                 self.d_Gamma_A_d_P_A(nu=nu))**2)
+                 self.d_Gamma_A_d_P_A(nu=nu)) ** 2)
 
     def NEP2_amp(self, T_amp, P_g, Gamma, nu):
         return ((k_B * T_amp / P_g) /
