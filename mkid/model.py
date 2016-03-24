@@ -8,14 +8,43 @@ BCS = 1.764
 
 
 class KID(object):
+    """
+    Notation:
+
+    P: absorbed optical power.
+    P_g: generator power on the feedline at a given frequency.
+    P_i:
+
+
+    """
 
     def __init__(self, active_metal, active_volume_um3, inactive_metal, inactive_volume_um3, substrate,
                  phonon_trapping_factor, alpha, f_r, iQc, iQi0, S_TLS_at_P_c, P_c):
-        self.substrate = substrate
+        """
+        Return a new KID instance.
+
+        :param active_metal: a Superconductor instance.
+        :param active_volume_um3: the active volume, in um^3. (Not currently used.)
+        :param inactive_metal: a Superconductor instance.
+        :param inactive_volume_um3: the inactive volume, in um^3. (Not currently used.)
+        :param substrate: a Substrate instance.
+        :param phonon_trapping_factor: the inverse of the probability that a recombination phonon escapes to the
+          substrate; F_\omega, in the notation of Wilson & Prober.
+        :param alpha: the kinetic inductance fraction.
+        :param f_r: the resonance frequency, in Hz.
+        :param iQc: the inverse of the coupling quality factor.
+        :param iQi0: the non-quasiparticle loss: the inverse of the internal quality factor with negligible
+          quasiparticle loss.
+        :param S_TLS_at_P_c: the TLS fractional frequency noise at some critical absorbed readout power; because TLS
+          noise has a f^{-1/2} spectrum, this implies a choice of fiducial frequency.
+        :param P_c: the critical power for TLS noise scaling.
+        :return: a KID instance.
+        """
         self.active_metal = active_metal
         self.active_volume_um3 = active_volume_um3
         self.inactive_metal = inactive_metal
         self.inactive_volume_um3 = inactive_volume_um3
+        self.substrate = substrate
         self.phonon_trapping_factor = phonon_trapping_factor
         self.alpha = alpha
         self.f_r = f_r
@@ -55,9 +84,10 @@ class KID(object):
     def optical_generation_rate(self, P, nu):
         return self.active_metal.quasiparticles_per_photon(nu) * P / (h * nu)
 
-    @property
-    def thermal_generation_rate(self):
-        return self.active_volume_um3 * self.active_metal.thermal_generation_per_um3(T=self.substrate.T)
+    def thermal_generation_rate(self, T=None):
+        if T is None:
+            T = self.substrate.T
+        return self.active_volume_um3 * self.active_metal.thermal_generation_per_um3(T=T)
 
     @property
     def effective_recombination_um3_per_s(self):
@@ -65,10 +95,10 @@ class KID(object):
 
     # Responsivity equations
 
-    def d_Gamma_A_d_P_A(self, nu):
+    def d_Gamma_d_P(self, nu):
         return self.active_metal.quasiparticles_per_photon(nu) / (h * nu)
 
-    def d_N_qp_d_Gamma_A(self, Gamma):
+    def d_N_qp_d_Gamma(self, Gamma):
         return self.tau_qp(Gamma=Gamma)
 
     def d_iQi_d_N_qp(self, T_qp=None):
@@ -95,31 +125,39 @@ class KID(object):
     def d_S21_d_x(self, iQi, x=0):
         return 1j * self.chi_c(iQi=iQi) * self.chi_g(iQi=iQi, x=x) / (2 * iQi)
 
-    def NEP2_photon_simple(self, P_A, P_B, nu, bandwidth):
-        return 2 * h * nu * (P_A + P_B) + 2 * P_A**2 / bandwidth
+    def NEP2_photon_simple(self, P, nu, bandwidth):
+        return 2 * h * nu * P + 2 * P**2 / bandwidth
 
-    def NEP2_photon(self, Gamma_A, Gamma_B, nu, bandwidth):
+    def NEP2_photon(self, Gamma, nu, bandwidth):
+        return (self.NEP2_photon_shot(Gamma=Gamma, nu=nu) +
+                self.NEP2_photon_wave(Gamma=Gamma, nu=nu, bandwidth=bandwidth))
+
+    def NEP2_photon_shot(self, Gamma, nu):
         m = self.active_metal.quasiparticles_per_photon(nu=nu)
-        S_Gamma = 2 * m * Gamma_A * (1 + Gamma_A / (m * bandwidth)) + 4 * Gamma_B
-        return S_Gamma / self.d_Gamma_A_d_P_A(nu=nu)**2
+        S_Gamma = 2 * m * Gamma
+        return S_Gamma / self.d_Gamma_d_P(nu=nu) ** 2
+
+    def NEP2_photon_wave(self, Gamma, nu, bandwidth):
+        S_Gamma = 2 * Gamma **2 / bandwidth
+        return S_Gamma / self.d_Gamma_d_P(nu=nu) ** 2
 
     def NEP2_recombination(self, Gamma, nu):
         """Gamma is the total generation rate, including all sources."""
-        return 4 * Gamma / self.d_Gamma_A_d_P_A(nu=nu)**2
+        return 4 * Gamma / self.d_Gamma_d_P(nu=nu) ** 2
 
     def NEP2_TLS(self, P_g, Gamma, nu):
         P_i = self.chi_a(iQi=self.iQi0 + self.iQqp(Gamma=Gamma)) * P_g
         return ((self.S_TLS_at_P_c * (self.P_c / P_i) ** (1 / 2)) /
                 (self.d_x_d_N_qp() *
-                 self.d_N_qp_d_Gamma_A(Gamma=Gamma) *
-                 self.d_Gamma_A_d_P_A(nu=nu)) ** 2)
+                 self.d_N_qp_d_Gamma(Gamma=Gamma) *
+                 self.d_Gamma_d_P(nu=nu)) ** 2)
 
     def NEP2_amp(self, T_amp, P_g, Gamma, nu):
         return ((k_B * T_amp / P_g) /
                 (np.abs(self.d_S21_d_x(iQi=self.iQi0 + self.iQqp(Gamma=Gamma))) *
                  self.d_x_d_N_qp() *
-                 self.d_N_qp_d_Gamma_A(Gamma=Gamma) *
-                 self.d_Gamma_A_d_P_A(nu=nu))**2)
+                 self.d_N_qp_d_Gamma(Gamma=Gamma) *
+                 self.d_Gamma_d_P(nu=nu)) ** 2)
 
 
 class Superconductor(object):
@@ -153,7 +191,7 @@ class Superconductor(object):
             return 0
         elif 2 * nu_g < nu:
             return 1 / 2
-        else: # For 1 <= nu / nu_g < 2
+        else:  # For 1 <= nu / nu_g < 2
             return nu_g / nu
 
     def quasiparticles_per_photon(self, nu):
